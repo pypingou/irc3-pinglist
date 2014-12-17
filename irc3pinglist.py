@@ -78,9 +78,6 @@ class Pinglist(object):
     def __init__(self, bot):
         self.bot = bot
 
-        koji_url = bot.config['koji']['url']
-        self.koji_client = koji.ClientSession(koji_url, {})
-
     @command
     def add(self, mask, target, args):
         """add <listname> [<nick> ...]
