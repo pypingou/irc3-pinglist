@@ -89,7 +89,7 @@ class Pinglist(object):
         """
         listname = args['<listname>']
         try:
-            pinglist = self.bot.db[listname]
+            pinglist = self.bot.db['pinglist'][listname]
         except KeyError:
             msg = 'No such ping list.'
             self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -105,7 +105,7 @@ class Pinglist(object):
                     self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
                     return
 
-        self.bot.db[listname].update(nicks)
+        self.bot.db['pinglist'][listname].expand(list(nicks))
 
         msg = 'Nick(s) successfully added.'
         self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -121,7 +121,7 @@ class Pinglist(object):
         """
         listname = args['<listname>']
         try:
-            pinglist = self.bot.db[listname]
+            pinglist = self.bot.db['pinglist'][listname]
         except KeyError:
             msg = 'No such ping list.'
             self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -137,7 +137,9 @@ class Pinglist(object):
                     self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
                     return
 
-        self.bot.db[listname].difference_update(nicks)
+        nicks = set(self.bot.db['pinglist'][listname]).difference_update(nicks)
+
+        self.bot.db['pinglist'][listname] = list(nicks)
 
         msg = 'Nick(s) successfully removed.'
         self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -150,6 +152,7 @@ class Pinglist(object):
             %%create <listname> [<nick> ...]
         """
         listname = args['<listname>']
+        nicks = args.get('<nick>', None)
 
         if not _validate_listname(listname):
             msg = 'List names can only contain alphanumeric characters.'
@@ -160,12 +163,12 @@ class Pinglist(object):
             nick = set()
         else:
             nicks = set(nicks)
-            for nick in nicks:
-                if not ircutils.isNick(nick):
-                    irc.error('Invalid nick: %s' % nick)
-                    return
+            #for nick in nicks:
+                #if not ircutils.isNick(nick):
+                    #irc.error('Invalid nick: %s' % nick)
+                    #return
 
-        self.bot.db[listname].difference_update(nicks)
+        self.bot.db['pinglist'] = {listname: list(nicks)}
 
         msg = 'Pinglist %s added.' % listname
         self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -178,7 +181,7 @@ class Pinglist(object):
         '''
         listname = args['<listname>']
 
-        if not listname in self.bot.db:
+        if not listname in self.bot.db['pinglist']:
             msg = 'No such ping list.'
             self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
             return
@@ -197,7 +200,7 @@ class Pinglist(object):
         listname = args['<listname>']
 
         try:
-            pinglist = self.bot.db[listname]
+            pinglist = self.bot.db['pinglist'][listname]
         except KeyError:
             msg = 'No such ping list.'
             self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -222,7 +225,9 @@ class Pinglist(object):
 
         message = 'Current ping lists: '
         self.bot.privmsg(target, '%s: %s' % (mask.nick, message))
-        message = ' '.join(sorted(self.bot.db.keys()))
+        print dir(self.bot.db)
+        print self.bot.db
+        message = ' '.join(sorted(self.bot.db['pinglist'].keys()))
 
         ping_message = textwrap.wrap(message,
             width=256, break_long_words=False, break_on_hyphens=False)
@@ -241,13 +246,13 @@ class Pinglist(object):
 
         listname = args['<listname>']
         channel = args.get('<channel>', None)
-        message = args['<message']
+        message = args['<message>']
 
         if channel is not None:
             target = channel
 
         try:
-            pinglist = self.bot.db[listname]
+            pinglist = self.bot.db['pinglist'][listname]
         except KeyError:
             msg = 'No such ping list.'
             self.bot.privmsg(target, '%s: %s' % (mask.nick, msg))
@@ -260,12 +265,12 @@ class Pinglist(object):
 
         # Handle matching of away/status nicks.
         ping_set = set(pinglist)
-        for nick in pinglist:
-            for nick2 in irc.state.channels[target].users:
-                if nick == nick2:
-                    continue
-                if _nick_match(nick, nick2):
-                    ping_set.add(nick2)
+        #for nick in pinglist:
+            #for nick2 in irc.state.channels[target].users:
+                #if nick == nick2:
+                    #continue
+                #if _nick_match(nick, nick2):
+                    #ping_set.add(nick2)
         pinglist = sorted(ping_set)
 
         ping_message = textwrap.wrap(' '.join(pinglist),
